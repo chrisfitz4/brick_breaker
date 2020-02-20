@@ -3,97 +3,155 @@ package com.illicitintelligence.android.brickbreaker
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
+import android.view.MotionEvent
 import android.view.View
-import kotlin.math.abs
+import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 
-class Game(context: Context, attributeSet: AttributeSet): View(context,attributeSet), View.OnClickListener{
+class Game(context: Context, attributeSet: AttributeSet) : View(context, attributeSet), View.OnTouchListener {
 
-    lateinit var bricks: Bricks
-    val paint = Paint().apply{
-        style=Paint.Style.FILL
+    interface ActivityController{
+        fun showGameOver(lives: Int)
     }
-    val strokePaint = Paint().apply {
-        style=Paint.Style.STROKE
-        strokeWidth=2f
-        color= Color.BLACK
+    var activityController: ActivityController? = null
+    private var lives = 3
+    init {
+        this.setOnTouchListener(this)
     }
-    val ballPaint = Paint().apply{
-        color=Color.GRAY
+    var gameOverCalledOnce=false
+    private var withinTime = false
+    private var startable = true
+    var job: Job? = null
+    private val paint = Paint().apply {
+        style = Paint.Style.FILL
     }
-    val paddlePaint = Paint().apply{
+    private val strokePaint = Paint().apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        color = Color.BLACK
+    }
+    private val ballPaint = Paint().apply {
+        color = Color.GRAY
+    }
+    private val paddlePaint = Paint().apply {
         color = Color.GREEN
     }
-    var ballPosition : PointF = PointF()
-    val BALL_RADIUS = 30F
-    var velocityX = 0F
-    var velocityY = 0F
-    init {
-        this.setOnClickListener(this)
-    }
-    lateinit var paddle: Paddle
-
+    private var paddleX = 0F
+    private val ball = Ball()
+    private var ballStartY: Float = 0F
+    private lateinit var bricks: Bricks
+    private lateinit var paddle: Paddle
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        bricks = Bricks(w,h/3)
+        bricks = Bricks(w, h / 3)
         bricks.createRectangles()
-        ballPosition.x = w/2.toFloat()
-        ballPosition.y = 7*h/8.toFloat()
-        paddle = Paddle(RectF(w/2- PADDLE_WIDTH/2,8*h/9.toFloat(),w/2+ PADDLE_WIDTH/2,8*h/9+ PADDLE_HEIGHT),Color.YELLOW,PaddleProperty.NORMAL)
+        ballStartY=7 * h / 8.toFloat()
+        ball.position=PointF(w / 2.toFloat()+BALL_OFFSET,ballStartY)
+        paddle = Paddle(
+            RectF(
+                w / 2 - PADDLE_WIDTH / 2,
+                8 * h / 9.toFloat(),
+                w / 2 + PADDLE_WIDTH / 2,
+                8 * h / 9 + PADDLE_HEIGHT
+            ),
+            Color.YELLOW,
+            PaddleProperty.NORMAL
+        )
+        paddleX = w/2.toFloat()
+        job = CoroutineScope(IO).launch {
+            while(true){
+                delay(15)
+                CoroutineScope(Main).launch{
+                    paddle.moveTowardX(paddleX,width)
+                    if(startable){
+                        ball.position.x=paddle.getCenter()+ BALL_OFFSET
+                    }
+                }
+            }
+        }
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        for(item in bricks.bricksList){
-            item?.let{
-                paint.color=it.color
-                canvas?.drawRect(it.rect,paint)
-                canvas?.drawRect(it.rect,strokePaint)
+        for (item in bricks.bricksList) {
+            item?.let {
+                paint.color = it.color
+                canvas?.drawRect(it.rect, paint)
+                canvas?.drawRect(it.rect, strokePaint)
             }
         }
-        canvas?.drawCircle(ballPosition.x,ballPosition.y,BALL_RADIUS,ballPaint)
-        canvas?.drawRoundRect(paddle.rect,paddle.getWidth(),paddle.getWidth(),paddlePaint)
+        canvas?.drawCircle(ball.position.x,ball.position.y,ball.radius,ballPaint)
+        canvas?.drawRoundRect(paddle.rect, paddle.getWidth(), paddle.getWidth(), paddlePaint)
         moveBall()
     }
 
-    private fun moveBall(){
-        ballPosition.offset(velocityX,velocityY)
-        if(ballPosition.x+BALL_RADIUS>width){
-            velocityX= abs(velocityX) *-1
-        }
-        if(ballPosition.x-BALL_RADIUS<0){
-            velocityX= abs(velocityX)
-        }
-        if(ballPosition.y-BALL_RADIUS<0){
-            velocityY=abs(velocityY)
-        }
-        if(ballPosition.y+BALL_RADIUS>height){
-            gameOver()
-        }
-        val brick = bricks.didItHitABrick(ballPosition,BALL_RADIUS)
-        brick?.let {
-            when(it.hitType(ballPosition)){
-                HitType.VERTICAL->velocityY*=-1
-                HitType.HORIZONTAL->velocityX*=-1
-                HitType.DIAGONAL->{velocityX*=-1
-                    velocityY*=-1}
+    private fun moveBall() {
+        ball.moveBall()
+        try {
+            ball.checkHit(width,height)
+        }catch(exception: Exception){
+            if(!gameOverCalledOnce) {
+                gameOverCalledOnce=true
+                gameOver()
             }
         }
-        val newVelocityPoint = paddle.hitPaddle(ballPosition,BALL_RADIUS,velocityX,velocityY)
-        velocityX = newVelocityPoint.x
-        velocityY = newVelocityPoint.y
+        val brick = bricks.didItHitABrick(ball.position, ball.radius)
+        brick?.let {
+            ball.hitABrick(it.hitType(ball.position))
+        }
+        if(!startable) {
+            ball.velocity=paddle.hitPaddle(ball.position,ball.radius,ball.velocity,ball.speed)
+        }
         invalidate()
     }
 
-    override fun onClick(v: View?) {
-        velocityX=5F
-        velocityY=-5F
-        moveBall()
-    }
-
     private fun gameOver() {
-
+        lives--
+        activityController?.showGameOver(lives)
+        startable = true
+        ball.resetVelocity()
     }
 
+    fun resetBall(){
+        ball.position=PointF(ball.position.x,ballStartY)
+    }
+
+    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+        event?.let {
+            when (it.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    timeClick()
+                    paddleX=it.x
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (startable && withinTime) {
+                        performClick()
+                    }
+                    paddleX=paddle.getCenter()
+                }
+                MotionEvent.ACTION_MOVE -> paddleX=it.x
+                else -> {
+                }
+            }
+        }
+        return true
+    }
+
+    private fun timeClick() {
+        withinTime = true
+        CoroutineScope(IO).launch {
+            delay(200)
+            CoroutineScope(Main).launch {
+                withinTime = false
+            }
+        }
+    }
+
+    override fun performClick(): Boolean {
+        moveBall()
+        startable = false
+        return super.performClick()
+    }
 }

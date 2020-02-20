@@ -11,7 +11,10 @@ enum class Property{
 enum class HitType{
     HORIZONTAL,
     VERTICAL,
-    DIAGONAL,
+    DIAGONAL_TOP_LEFT,
+    DIAGONAL_TOP_RIGHT,
+    DIAGONAL_BOTTOM_LEFT,
+    DIAGONAL_BOTTOM_RIGHT,
     ERROR
 }
 
@@ -29,25 +32,28 @@ data class Brick(val rect: Rect, val color: Int, val property: Property){
     fun hitBottom(point: PointF): Boolean{
         return point.y>rect.bottom
     }
-    fun hitTopOrBottom(point: PointF): Boolean{
-        return hitTop(point)||hitBottom(point)
-    }
-    fun hitRightOrLeft(point: PointF): Boolean{
-        return hitRight(point)||hitLeft(point)
-    }
+
     fun hitType(point: PointF): HitType{
-        val hitTopOrBottom = hitTopOrBottom(point)
-        val hitRightOrLeft = hitRightOrLeft(point)
-        val hitDiagonal = hitTopOrBottom&&hitRightOrLeft
-        if(hitDiagonal){
-            return HitType.DIAGONAL
-        }
-        if(hitRightOrLeft){
+        val hitTop = hitTop(point)
+        val hitBottom = hitBottom(point)
+        val hitRight = hitRight(point)
+        val hitLeft = hitLeft(point)
+        if(hitTop){
+            return when {
+                hitLeft -> HitType.DIAGONAL_TOP_LEFT
+                hitRight -> HitType.DIAGONAL_TOP_RIGHT
+                else -> HitType.VERTICAL
+            }
+        }else if(hitBottom){
+            return when {
+                hitLeft -> HitType.DIAGONAL_BOTTOM_LEFT
+                hitRight -> HitType.DIAGONAL_BOTTOM_RIGHT
+                else -> HitType.VERTICAL
+            }
+        }else if(hitRight||hitLeft){
             return HitType.HORIZONTAL
+        }else {
+            return HitType.ERROR
         }
-        if(hitTopOrBottom){
-            return HitType.VERTICAL
-        }
-        return HitType.ERROR
     }
 }

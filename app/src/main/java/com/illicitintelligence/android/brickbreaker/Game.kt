@@ -8,8 +8,10 @@ import android.view.View
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlin.math.sqrt
+import kotlin.random.Random
 
-class Game(context: Context, attributeSet: AttributeSet) : View(context, attributeSet), View.OnTouchListener {
+class Game(context: Context, attributeSet: AttributeSet) : View(context, attributeSet), View.OnTouchListener, Paddle.PaddleDelegate, Bricks.TrappedBallDelegate {
 
     interface ActivityController{
         fun showGameOver(lives: Int)
@@ -37,18 +39,19 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
     private val paddlePaint = Paint().apply {
         color = Color.GREEN
     }
-    private var paddleX = 0F
     private val ball = Ball()
     private var ballStartY: Float = 0F
     private lateinit var bricks: Bricks
     private lateinit var paddle: Paddle
+    private lateinit var level: IntArray
+    private var winner = false
+    private var restartable = false
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        bricks = Bricks(w, h / 3)
-        bricks.createRectangles()
-        ballStartY=7 * h / 8.toFloat()
-        ball.position=PointF(w / 2.toFloat()+BALL_OFFSET,ballStartY)
+        bricks = Bricks(w, h / 3, this)
+        bricks.createRectanglesLevel(level)
+        //bricks.createRectangles()
         paddle = Paddle(
             RectF(
                 w / 2 - PADDLE_WIDTH / 2,
@@ -57,20 +60,27 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
                 8 * h / 9 + PADDLE_HEIGHT
             ),
             Color.YELLOW,
-            PaddleProperty.NORMAL
+            PaddleProperty.NORMAL,
+            this
         )
-        paddleX = w/2.toFloat()
+        ballStartY=paddle.rect.top-ball.radius+1
+        ball.position=PointF(w / 2.toFloat()+BALL_OFFSET,ballStartY)
+        paddle.paddleX = w/2.toFloat()
         job = CoroutineScope(IO).launch {
             while(true){
                 delay(15)
                 CoroutineScope(Main).launch{
-                    paddle.moveTowardX(paddleX,width)
-                    if(startable){
+                    paddle.moveTowardX(paddle.paddleX,width)
+                    if(startable||restartable){
                         ball.position.x=paddle.getCenter()+ BALL_OFFSET
                     }
                 }
             }
         }
+    }
+
+    fun loadLevel(level: IntArray){
+        this.level = level
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -84,7 +94,13 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
         }
         canvas?.drawCircle(ball.position.x,ball.position.y,ball.radius,ballPaint)
         canvas?.drawRoundRect(paddle.rect, paddle.getWidth(), paddle.getWidth(), paddlePaint)
-        moveBall()
+        if(winner){
+            gameWonMove()
+        }else if(restartable){
+
+        }else{
+            moveBall()
+        }
     }
 
     private fun moveBall() {
@@ -99,7 +115,22 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
         }
         val brick = bricks.didItHitABrick(ball.position, ball.radius)
         brick?.let {
-            ball.hitABrick(it.hitType(ball.position))
+            val brickRow = it.row
+            val brickColumn = it.column
+            ball.hitABrick(it.hitType(ball.position,
+                bricks.getBrick(brickRow,brickColumn-1),
+                bricks.getBrick(brickRow,brickColumn+1),
+                bricks.getBrick(brickRow-1,brickColumn),
+                bricks.getBrick(brickRow+1,brickColumn)))
+            if(bricks.bricksLeftCount==0){
+                winner=true
+                paddle.paddleX=paddle.getCenter()
+                val deltaX = paddle.paddleX-ball.position.x
+                val deltaY = paddle.rect.top-ball.position.y
+                val magnitude = sqrt(deltaX*deltaX+deltaY*deltaY)
+                ball.velocity.x=deltaX/magnitude*WIN_SPEED
+                ball.velocity.y=deltaY/magnitude*WIN_SPEED
+            }
         }
         if(!startable) {
             ball.velocity=paddle.hitPaddle(ball.position,ball.radius,ball.velocity,ball.speed)
@@ -114,25 +145,33 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
         ball.resetVelocity()
     }
 
+    private fun gameWonMove(){
+        ball.moveBall()
+        paddle.winHitPaddle(ball)
+        invalidate()
+    }
+
     fun resetBall(){
         ball.position=PointF(ball.position.x,ballStartY)
     }
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         event?.let {
-            when (it.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    timeClick()
-                    paddleX=it.x
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (startable && withinTime) {
-                        performClick()
+            if (!winner) {
+                when (it.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        timeClick()
+                        paddle.paddleX = it.x
                     }
-                    paddleX=paddle.getCenter()
-                }
-                MotionEvent.ACTION_MOVE -> paddleX=it.x
-                else -> {
+                    MotionEvent.ACTION_UP -> {
+                        if (startable && withinTime) {
+                            performClick()
+                        }
+                        paddle.paddleX = paddle.getCenter()
+                    }
+                    MotionEvent.ACTION_MOVE -> paddle.paddleX = it.x
+                    else -> {
+                    }
                 }
             }
         }
@@ -142,7 +181,7 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
     private fun timeClick() {
         withinTime = true
         CoroutineScope(IO).launch {
-            delay(200)
+            delay(150)
             CoroutineScope(Main).launch {
                 withinTime = false
             }
@@ -153,5 +192,25 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
         moveBall()
         startable = false
         return super.performClick()
+    }
+
+    override fun bricksHitReset() {
+        bricks.timesInARow=0
+    }
+
+    override fun hitPaddleAfterWin() {
+        winner=false
+        restartable=true
+    }
+
+    override fun fixVelocity() {
+        if(ball.velocity.x>=0){
+            ball.velocity.x+=0.1F
+        }else{
+            ball.velocity.x-=0.1F
+        }
+        if(ball.velocity.y>0){
+            ball.velocity.y+= Random.nextInt(4)/10F
+        }
     }
 }

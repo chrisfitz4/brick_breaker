@@ -1,9 +1,7 @@
 package com.illicitintelligence.android.brickbreaker
 
 import android.graphics.PointF
-import android.graphics.Rect
 import android.graphics.RectF
-import android.view.MotionEvent
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.cos
@@ -14,23 +12,25 @@ enum class PaddleProperty {
     SPECIAL
 }
 
-class Paddle(var rect: RectF, var color: Int, var paddleProperty: PaddleProperty) {
+class Paddle(var rect: RectF, var color: Int, var paddleProperty: PaddleProperty, val paddleDelegate: PaddleDelegate) {
 
     var paddleX = 0F
 
-    fun hitPaddle(point: PointF, radius: Float, velocityX: Float, velocityY: Float, speed: Float): PointF {
-        return if(isHit(point,radius)){
-            val angle = calculateAngle(point)
-            val xVel = cos(angle)
-            val yVel = sin(angle)
-            PointF(xVel*speed,-1*yVel*speed)
-        }else{
-            PointF(velocityX,velocityY)
+    interface PaddleDelegate{
+        fun bricksHitReset()
+        fun hitPaddleAfterWin()
+    }
+
+    fun winHitPaddle(ball: Ball) {
+        if(isHit(ball.position,ball.radius)){
+            ball.velocity=PointF(0F,0F)
+            paddleDelegate.hitPaddleAfterWin()
         }
     }
 
     fun hitPaddle(point: PointF, radius: Float, velocity: PointF, speed: Float): PointF {
         return if(isHit(point,radius)){
+            paddleDelegate.bricksHitReset()
             val angle = calculateAngle(point)
             val xVel = cos(angle)
             val yVel = sin(angle)
@@ -78,7 +78,6 @@ class Paddle(var rect: RectF, var color: Int, var paddleProperty: PaddleProperty
             percent=1F
         }
         val relativeDistFromCenter = (percent-50)/50
-
         return acos(relativeDistFromCenter)
     }
 }

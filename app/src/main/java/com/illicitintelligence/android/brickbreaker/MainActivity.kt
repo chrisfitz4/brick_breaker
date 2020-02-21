@@ -15,8 +15,12 @@ class MainActivity : AppCompatActivity(), Game.ActivityController {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        val level = resources.getIntArray(R.array.level)
         game.activityController = this
+        game.loadLevel(level)
+        for(i in 0 until level.size){
+            println(Integer.toHexString(level[i]))
+        }
     }
 
     override fun onDestroy() {
@@ -25,6 +29,7 @@ class MainActivity : AppCompatActivity(), Game.ActivityController {
         game.job=null
         job?.cancel()
         job=null
+        IO.cancel()
     }
 
     override fun showGameOver(lives: Int) {

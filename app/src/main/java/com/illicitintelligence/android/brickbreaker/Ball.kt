@@ -1,6 +1,7 @@
 package com.illicitintelligence.android.brickbreaker
 
 import android.graphics.PointF
+import android.util.Log
 import kotlin.math.abs
 
 class Ball {
@@ -35,8 +36,10 @@ class Ball {
     fun hitABrick(hitType: HitType){
         speed+=speedIncrement
         when (hitType) {
-            HitType.VERTICAL -> velocity.y *= -1
-            HitType.HORIZONTAL -> velocity.x *= -1
+            HitType.TOP -> velocity.y = -1*abs(velocity.y)
+            HitType.BOTTOM -> velocity.y = abs(velocity.y)
+            HitType.LEFT -> velocity.x = -1*abs(velocity.x)
+            HitType.RIGHT -> velocity.x = abs(velocity.x)
             HitType.DIAGONAL_TOP_RIGHT -> {
                 velocity.x = abs(velocity.x)
                 velocity.y = -1 * abs(velocity.y)
@@ -54,7 +57,8 @@ class Ball {
                 velocity.y = abs(velocity.y)
             }
             HitType.ERROR -> {
-                throw Exception("HitType Error")
+                Log.d("TAG_X","${velocity.x},${velocity.y}")
+//                throw Exception("HitType Error")
             }
         }
     }

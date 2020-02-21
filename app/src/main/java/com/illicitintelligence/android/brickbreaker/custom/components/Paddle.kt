@@ -1,7 +1,9 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.custom.components
 
 import android.graphics.PointF
 import android.graphics.RectF
+import com.illicitintelligence.android.brickbreaker.util.PADDLE_OFFSET
+import com.illicitintelligence.android.brickbreaker.util.PADDLE_VELOCITY
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.cos
@@ -41,8 +43,8 @@ class Paddle(var rect: RectF, var color: Int, var paddleProperty: PaddleProperty
     }
 
     private fun isHit(point: PointF, radius: Float): Boolean{
-        return rect.left<point.x+radius-PADDLE_OFFSET   //within the left side
-                &&rect.right>point.x-radius+PADDLE_OFFSET //within the right side
+        return rect.left<point.x+radius- PADDLE_OFFSET   //within the left side
+                &&rect.right>point.x-radius+ PADDLE_OFFSET //within the right side
                 &&point.y<rect.top  //above the paddle
                 &&point.y+radius>rect.top //not too far above the paddle
     }
@@ -65,8 +67,8 @@ class Paddle(var rect: RectF, var color: Int, var paddleProperty: PaddleProperty
             rect.left+=dif
             rect.right+=dif
         }else{
-            rect.left+= PADDLE_VELOCITY*posOrNeg
-            rect.right+= PADDLE_VELOCITY*posOrNeg
+            rect.left+= PADDLE_VELOCITY *posOrNeg
+            rect.right+= PADDLE_VELOCITY *posOrNeg
         }
     }
 

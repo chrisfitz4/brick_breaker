@@ -1,4 +1,4 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.custom.components
 
 import android.graphics.PointF
 import android.graphics.Rect
@@ -41,7 +41,7 @@ class Brick(val rect: Rect, val color: Int, val property: Property, val column: 
         brickBelowExists: Boolean,
         brickToLeftExists: Boolean,
         brickToRightExists: Boolean
-    ): HitType{
+    ): HitType {
         val hitTop = hitTop(point)
         val hitBottom = hitBottom(point)
         val hitRight = hitRight(point)

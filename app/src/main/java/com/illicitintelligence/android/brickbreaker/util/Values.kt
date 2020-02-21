@@ -1,4 +1,4 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.util
 
 const val BRICK_COUNT = 7
 const val BRICK_COUNT_VERT = 8

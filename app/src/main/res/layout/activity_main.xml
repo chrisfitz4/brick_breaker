@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".view.MainActivity">
 
-    <com.illicitintelligence.android.brickbreaker.Game
+    <com.illicitintelligence.android.brickbreaker.custom.Game
         android:id="@+id/game"
         android:layout_width="0dp"
         android:layout_height="0dp"

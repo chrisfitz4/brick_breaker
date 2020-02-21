@@ -1,8 +1,10 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.view
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import com.illicitintelligence.android.brickbreaker.R
+import com.illicitintelligence.android.brickbreaker.custom.Game
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO

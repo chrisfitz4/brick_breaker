@@ -1,7 +1,8 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.custom.components
 
 import android.graphics.PointF
 import android.util.Log
+import com.illicitintelligence.android.brickbreaker.util.START_VELOCITY
 import kotlin.math.abs
 
 class Ball {

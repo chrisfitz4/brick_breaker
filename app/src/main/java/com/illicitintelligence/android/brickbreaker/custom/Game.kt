@@ -1,17 +1,26 @@
-package com.illicitintelligence.android.brickbreaker
+package com.illicitintelligence.android.brickbreaker.custom
 
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import com.illicitintelligence.android.brickbreaker.custom.components.Ball
+import com.illicitintelligence.android.brickbreaker.custom.components.Bricks
+import com.illicitintelligence.android.brickbreaker.custom.components.Paddle
+import com.illicitintelligence.android.brickbreaker.custom.components.PaddleProperty
+import com.illicitintelligence.android.brickbreaker.util.BALL_OFFSET
+import com.illicitintelligence.android.brickbreaker.util.PADDLE_HEIGHT
+import com.illicitintelligence.android.brickbreaker.util.PADDLE_WIDTH
+import com.illicitintelligence.android.brickbreaker.util.WIN_SPEED
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-class Game(context: Context, attributeSet: AttributeSet) : View(context, attributeSet), View.OnTouchListener, Paddle.PaddleDelegate, Bricks.TrappedBallDelegate {
+class Game(context: Context, attributeSet: AttributeSet) : View(context, attributeSet), View.OnTouchListener,
+    Paddle.PaddleDelegate, Bricks.TrappedBallDelegate {
 
     interface ActivityController{
         fun showGameOver(lives: Int)
@@ -39,7 +48,8 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
     private val paddlePaint = Paint().apply {
         color = Color.GREEN
     }
-    private val ball = Ball()
+    private val ball =
+        Ball()
     private var ballStartY: Float = 0F
     private lateinit var bricks: Bricks
     private lateinit var paddle: Paddle
@@ -49,22 +59,28 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        bricks = Bricks(w, h / 3, this)
+        bricks =
+            Bricks(
+                w,
+                h / 3,
+                this
+            )
         bricks.createRectanglesLevel(level)
         //bricks.createRectangles()
-        paddle = Paddle(
-            RectF(
-                w / 2 - PADDLE_WIDTH / 2,
-                8 * h / 9.toFloat(),
-                w / 2 + PADDLE_WIDTH / 2,
-                8 * h / 9 + PADDLE_HEIGHT
-            ),
-            Color.YELLOW,
-            PaddleProperty.NORMAL,
-            this
-        )
+        paddle =
+            Paddle(
+                RectF(
+                    w / 2 - PADDLE_WIDTH / 2,
+                    8 * h / 9.toFloat(),
+                    w / 2 + PADDLE_WIDTH / 2,
+                    8 * h / 9 + PADDLE_HEIGHT
+                ),
+                Color.YELLOW,
+                PaddleProperty.NORMAL,
+                this
+            )
         ballStartY=paddle.rect.top-ball.radius+1
-        ball.position=PointF(w / 2.toFloat()+BALL_OFFSET,ballStartY)
+        ball.position=PointF(w / 2.toFloat()+ BALL_OFFSET,ballStartY)
         paddle.paddleX = w/2.toFloat()
         job = CoroutineScope(IO).launch {
             while(true){
@@ -128,8 +144,8 @@ class Game(context: Context, attributeSet: AttributeSet) : View(context, attribu
                 val deltaX = paddle.paddleX-ball.position.x
                 val deltaY = paddle.rect.top-ball.position.y
                 val magnitude = sqrt(deltaX*deltaX+deltaY*deltaY)
-                ball.velocity.x=deltaX/magnitude*WIN_SPEED
-                ball.velocity.y=deltaY/magnitude*WIN_SPEED
+                ball.velocity.x=deltaX/magnitude* WIN_SPEED
+                ball.velocity.y=deltaY/magnitude* WIN_SPEED
             }
         }
         if(!startable) {
